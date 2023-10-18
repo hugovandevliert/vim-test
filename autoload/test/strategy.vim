@@ -130,19 +130,15 @@ function! test#strategy#neovim_sticky(cmd) abort
 endfunction
 
 function! test#strategy#vimterminal(cmd) abort
-  " It needs some cleaning up, but it works! Not implemented yet: checking if
-  " the cmd is the same. To allow multiple runs at the same time, we should
-  " only re-use a window if the cmd is exactly the same.
-  if get(s:, 'vimterminal_prev_bufnr', '')
-    if index(term_list(), s:vimterminal_prev_bufnr) >= 0 && bufwinnr(s:vimterminal_prev_bufnr) >= 0
-      execute bufwinnr(s:vimterminal_prev_bufnr) 'wincmd w'
-      let s:vimterminal_prev_bufnr = term_start(!s:Windows() ? ['/bin/sh', '-c', a:cmd] : ['cmd.exe', '/c', a:cmd], {'curwin': 1, 'term_name': a:cmd})
-    else
-      let s:vimterminal_prev_bufnr = term_start(!s:Windows() ? ['/bin/sh', '-c', a:cmd] : ['cmd.exe', '/c', a:cmd], {'term_name': a:cmd})
-    endif
+  let previous_buffer = get(s:, 'vimterminal_previous_buffer', '')
+  " If the previous buffer is still in the term_list and is open in a window, reuse it.
+  if previous_buffer && index(term_list(), previous_buffer) >= 0 && bufwinnr(previous_buffer) >= 0
+    execute bufwinnr(previous_buffer) 'wincmd w'
   else
-    let s:vimterminal_prev_bufnr = term_start(!s:Windows() ? ['/bin/sh', '-c', a:cmd] : ['cmd.exe', '/c', a:cmd], {'term_name': a:cmd})
+    let term_position = get(g:, 'test#vim#term_position', 'botright')
+    execute term_position . ' new'
   endif
+  let s:vimterminal_previous_buffer = term_start(!s:Windows() ? ['/bin/sh', '-c', a:cmd] : ['cmd.exe', '/c', a:cmd], {'curwin': 1, 'term_name': a:cmd})
   au BufDelete <buffer> wincmd p " switch back to last window
   nnoremap <buffer> <Enter> :bd<CR>
   redraw
